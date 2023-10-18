@@ -81,6 +81,7 @@ namespace
     std::unordered_map<uint16, MonstrositySpeciesRow>  gMonstrositySpeciesMap;
     std::unordered_map<uint16, MonstrosityInstinctRow> gMonstrosityInstinctMap;
     std::unordered_map<uint16, MonstrositySkillRow>    gMonstrositySkillMap;
+    std::unordered_map<uint8, uint32>                  gMonstrosityExpMap;
 } // namespace
 
 monstrosity::MonstrosityData_t::MonstrosityData_t()
@@ -148,7 +149,7 @@ void monstrosity::LoadStaticData()
 
     for (auto& [_, entry] : gMonstrosityInstinctMap)
     {
-        const auto rset = db::preparedStmt("SELECT modId, value FROM monstrosity_instinct_mods WHERE monstrosity_instinct_id = (?)", entry.monstrosityInstinctId);
+        const auto rset = db::preparedStmt("SELECT modId, value FROM monstrosity_instinct_mods WHERE monstrosity_instinct_id = ?", entry.monstrosityInstinctId);
         if (rset && rset->rowsCount())
         {
             while (rset->next())
@@ -160,24 +161,30 @@ void monstrosity::LoadStaticData()
         }
     }
 
-    ret = sql->Query("SELECT monstrosity_species_id, dat_skill_id, mob_skill_id, unlock_level, tp_cost FROM monstrosity_tp_skills;");
-    if (ret != SQL_ERROR && sql->NumRows() != 0)
     {
-        while (sql->NextRow() == SQL_SUCCESS)
+        const auto rset = db::preparedStmt("SELECT monstrosity_species_id, dat_skill_id, mob_skill_id, unlock_level, tp_cost FROM monstrosity_tp_skills");
+        FOR_DB_MULTIPLE_RESULTS(rset)
         {
             MonstrositySkillRow row;
 
-            row.monstrositySpeciesCode = static_cast<uint16>(sql->GetUIntData(0));
-            row.monstrositySkillId     = static_cast<uint16>(sql->GetUIntData(1));
-            row.monsterSkillId         = static_cast<uint16>(sql->GetUIntData(2));
-            row.levelUnlocked          = static_cast<uint8>(sql->GetUIntData(3));
-            row.tpCost                 = static_cast<uint16>(sql->GetUIntData(4));
+            row.monstrositySpeciesCode = rset->get<uint16>("monstrosity_species_id");
+            row.monstrositySkillId     = rset->get<uint16>("dat_skill_id");
+            row.monsterSkillId         = rset->get<uint16>("mob_skill_id");
+            row.levelUnlocked          = rset->get<uint8>("unlock_level");
+            row.tpCost                 = rset->get<uint16>("tp_cost");
 
-            // NOTE: Only keep the first results
-            if (gMonstrositySkillMap.find(row.monstrositySkillId) == gMonstrositySkillMap.end())
-            {
-                gMonstrositySkillMap[row.monstrositySkillId] = row;
-            }
+            gMonstrositySkillMap.try_emplace(row.monstrositySkillId, row);
+        }
+    }
+
+    {
+        const auto rset = db::preparedStmt("SELECT level, amount FROM monstrosity_exp_table");
+        FOR_DB_MULTIPLE_RESULTS(rset)
+        {
+            const auto level  = rset->get<uint8>("level");
+            const auto amount = rset->get<uint32>("amount");
+
+            gMonstrosityExpMap[level] = amount;
         }
     }
 }
@@ -448,7 +455,7 @@ void monstrosity::HandleMonsterSkillActionPacket(CCharEntity* PChar, CBasicPacke
 
     if (PChar->health.tp >= skill.tpCost)
     {
-        PChar->PAI->Internal_MobSkill(targId, skillId);
+        PChar->PAI->Internal_MobSkill(targId, skillId, skill.tpCost);
     }
     else
     {

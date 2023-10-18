@@ -279,7 +279,7 @@ bool CAIContainer::Internal_WeaponSkill(uint16 targid, uint16 wsid)
     return false;
 }
 
-bool CAIContainer::Internal_MobSkill(uint16 targid, uint16 wsid)
+bool CAIContainer::Internal_MobSkill(uint16 targid, uint16 wsid, uint16 manualTPCost)
 {
     auto* entity = dynamic_cast<CBattleEntity*>(PEntity);
     if (entity)
@@ -288,7 +288,7 @@ bool CAIContainer::Internal_MobSkill(uint16 targid, uint16 wsid)
         {
             return false;
         }
-        return ChangeState<CMobSkillState>(entity, targid, wsid);
+        return ChangeState<CMobSkillState>(entity, targid, wsid, manualTPCost);
     }
     return false;
 }
