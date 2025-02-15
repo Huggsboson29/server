@@ -6613,7 +6613,16 @@ void CLuaBaseEntity::setLevel(uint8 level)
         PChar->SetMLevel(level);
         PChar->jobs.job[PChar->GetMJob()] = level;
         PChar->SetSLevel(PChar->jobs.job[PChar->GetSJob()]);
-        PChar->jobs.exp[PChar->GetMJob()] = charutils::GetExpNEXTLevel(PChar->jobs.job[PChar->GetMJob()]) - 1;
+
+        if (PChar->m_PMonstrosity)
+        {
+            PChar->jobs.exp[PChar->GetMJob()] = monstrosity::GetExpNEXTLevel(PChar->jobs.job[PChar->GetMJob()]) - 1;
+        }
+        else
+        {
+            PChar->jobs.exp[PChar->GetMJob()] = charutils::GetExpNEXTLevel(PChar->jobs.job[PChar->GetMJob()]) - 1;
+        }
+
         charutils::ApplyAllEquipMods(PChar);
 
         charutils::SetStyleLock(PChar, false);
@@ -6673,7 +6682,15 @@ void CLuaBaseEntity::setsLevel(uint8 slevel)
 
     PChar->jobs.job[PChar->GetSJob()] = slevel;
     PChar->SetSLevel(PChar->jobs.job[PChar->GetSJob()]);
-    PChar->jobs.exp[PChar->GetSJob()] = charutils::GetExpNEXTLevel(PChar->jobs.job[PChar->GetSJob()]) - 1;
+
+    if (PChar->m_PMonstrosity)
+    {
+        PChar->jobs.exp[PChar->GetSJob()] = monstrosity::GetExpNEXTLevel(PChar->jobs.job[PChar->GetSJob()]) - 1;
+    }
+    else
+    {
+        PChar->jobs.exp[PChar->GetSJob()] = charutils::GetExpNEXTLevel(PChar->jobs.job[PChar->GetSJob()]) - 1;
+    }
 
     charutils::SetStyleLock(PChar, false);
     jobpointutils::RefreshGiftMods(PChar);

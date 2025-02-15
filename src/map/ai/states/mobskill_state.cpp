@@ -96,28 +96,31 @@ CMobSkill* CMobSkillState::GetSkill()
 
 void CMobSkillState::SpendCost()
 {
-    if (!m_PSkill->isTpFreeSkill())
+    if (m_PSkill->isTpFreeSkill())
     {
-        if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_SEKKANOKI))
-        {
-            m_spentTP = m_PEntity->addTP(-1000);
-            m_PEntity->StatusEffectContainer->DelStatusEffect(EFFECT_SEKKANOKI);
-        }
-        else if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MEIKYO_SHISUI) &&
-                 m_PEntity->GetLocalVar("[MeikyoShisui]MobSkillCount") > 0)
-        {
-            auto currentCount = m_PEntity->GetLocalVar("[MeikyoShisui]MobSkillCount");
-            m_PEntity->SetLocalVar("[MeikyoShisui]MobSkillCount", currentCount - 1);
-            m_spentTP = m_PEntity->addTP(-1000);
-        }
-        else if (m_manualTPCost > 0)
-        {
-            m_spentTP = m_PEntity->addTP(-m_manualTPCost);
-        }
-        else
-        {
-            m_spentTP = m_PEntity->addTP(-m_PEntity->health.tp);
-        }
+        return;
+    }
+
+    if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_SEKKANOKI))
+    {
+        m_spentTP = m_PEntity->addTP(-1000);
+        m_PEntity->StatusEffectContainer->DelStatusEffect(EFFECT_SEKKANOKI);
+    }
+    else if (m_PEntity->StatusEffectContainer->HasStatusEffect(EFFECT_MEIKYO_SHISUI) &&
+             m_PEntity->GetLocalVar("[MeikyoShisui]MobSkillCount") > 0)
+    {
+        auto currentCount = m_PEntity->GetLocalVar("[MeikyoShisui]MobSkillCount");
+        m_PEntity->SetLocalVar("[MeikyoShisui]MobSkillCount", currentCount - 1);
+        m_spentTP = m_PEntity->addTP(-1000);
+    }
+    else if (m_manualTPCost)
+    {
+        m_spentTP = m_PEntity->addTP(-m_manualTPCost);
+    }
+    else
+    {
+        // Spend all TP
+        m_spentTP = m_PEntity->addTP(-m_PEntity->health.tp);
     }
 }
 

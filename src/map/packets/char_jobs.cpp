@@ -37,19 +37,17 @@ CCharJobsPacket::CCharJobsPacket(CCharEntity* PChar)
     ref<uint8>(0x08) = PChar->GetMJob(); // Highlight the main job in Yellow
     ref<uint8>(0x0B) = PChar->GetSJob(); // Highlight the sub job in Blue
 
-    std::memcpy(buffer_.data() + 0x0C, &PChar->jobs, 22);
-
+    std::memcpy(buffer_.data() + 0x0C, &PChar->jobs, 28); // 4 bytes for unlocked bitfield + 24 bytes for jobs = 28
     std::memcpy(buffer_.data() + 0x20, &PChar->stats, 14);
-    std::memcpy(buffer_.data() + 0x44, &PChar->jobs, 27);
+    std::memcpy(buffer_.data() + 0x44, &PChar->jobs, 28); // 4 bytes for unlocked bitfield + 24 bytes for jobs = 28
 
     ref<uint32>(0x3C) = PChar->health.maxhp;
     ref<uint32>(0x40) = PChar->health.maxmp;
 
     ref<uint32>(0x44) = PChar->jobs.unlocked & 1; // The first bit in jobs.unlocked is responsible for an additional job
 
-    ref<uint16>(0x60) = PChar->m_EquipBlock; // Locked equipment slots
-    ref<uint16>(0x62) =
-        PChar->m_StatsDebilitation; // Bit field. Underestimation of physical characteristics, the characteristic turns red and a red arrlow appears next to it.
+    ref<uint16>(0x60) = PChar->m_EquipBlock;        // Locked equipment slots
+    ref<uint16>(0x62) = PChar->m_StatsDebilitation; // Bit field. Underestimation of physical characteristics, the characteristic turns red and a red arrlow appears next to it.
 
     ref<uint8>(0x64) = 0x01; // Unknown, set due to Retail reference; suspicion around mentor unlock
     ref<uint8>(0x65) = 0;    // Mentor Icon
@@ -62,9 +60,5 @@ CCharJobsPacket::CCharJobsPacket(CCharEntity* PChar)
     {
         ref<uint8>(0x08) = static_cast<uint8>(JOB_MON);
         ref<uint8>(0x0B) = static_cast<uint8>(JOB_MON);
-
-        // ref<uint8>(0x10) = 0x01; // ?
-
-        // ref<uint8>(0x5F) = 0x10; // MON level ?
     }
 }

@@ -539,6 +539,15 @@ void monstrosity::HandleEquipChangePacket(CCharEntity* PChar, CBasicPacket& data
         // If changing "family" of species
         if (PChar->m_PMonstrosity->MonstrosityId != previousId)
         {
+            const auto newMonLvl = PChar->m_PMonstrosity->levels[data.monstrosityId];
+
+            // Change JOB_MON level
+            PChar->SetMLevel(newMonLvl);
+
+            // Reset exp remainder
+            PChar->jobs.exp[JOB_MON]          = 0;
+            PChar->m_PMonstrosity->CurrentExp = 0;
+
             // Unequip all instincts
             for (std::size_t idx = 0; idx < 12; ++idx)
             {
@@ -647,6 +656,36 @@ void monstrosity::SetLevel(CCharEntity* PChar, uint8 id, uint8 level)
     PChar->m_PMonstrosity->levels[id] = level;
 }
 
+void monstrosity::SetCurrentExp(CCharEntity* PChar, uint32 exp)
+{
+    if (PChar->m_PMonstrosity == nullptr)
+    {
+        return;
+    }
+
+    PChar->m_PMonstrosity->CurrentExp = exp;
+}
+
+void monstrosity::HandleLevelUp(CCharEntity* PChar)
+{
+    if (PChar->m_PMonstrosity == nullptr)
+    {
+        return;
+    }
+
+    // By the time we come in here, the level of the MON job has been increased, and the
+    // remainder exp of the level has been correctly set.
+
+    const auto monId        = PChar->m_PMonstrosity->MonstrosityId;
+    const auto mLvl         = PChar->GetMLevel();
+    const auto expRemainder = PChar->jobs.exp[JOB_MON];
+
+    SetLevel(PChar, monId, mLvl);
+    SetCurrentExp(PChar, expRemainder);
+
+    WriteMonstrosityData(PChar);
+}
+
 void monstrosity::HandleDeathMenu(CCharEntity* PChar, uint8 type)
 {
     if (PChar->m_PMonstrosity == nullptr)
@@ -744,6 +783,16 @@ void monstrosity::SetBelligerencyFlag(CCharEntity* PChar, bool flag)
     PChar->m_PMonstrosity->Belligerency = flag;
 
     WriteMonstrosityData(PChar);
+}
+
+uint32 monstrosity::GetExpNEXTLevel(uint8 level)
+{
+    if (const auto it = gMonstrosityExpMap.find(level); it != gMonstrosityExpMap.end())
+    {
+        return (*it).second;
+    }
+
+    return 0;
 }
 
 void monstrosity::MaxAllLevels(CCharEntity* PChar)

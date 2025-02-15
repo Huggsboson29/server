@@ -46,7 +46,15 @@ CCharStatsPacket::CCharStatsPacket(CCharEntity* PChar)
     ref<uint8>(0x0F) = PChar->GetSLevel();
 
     ref<uint16>(0x10) = PChar->jobs.exp[PChar->GetMJob()];
-    ref<uint16>(0x12) = charutils::GetExpNEXTLevel(PChar->jobs.job[PChar->GetMJob()]);
+
+    if (PChar->m_PMonstrosity)
+    {
+        ref<uint16>(0x12) = monstrosity::GetExpNEXTLevel(PChar->jobs.job[PChar->GetMJob()]);
+    }
+    else
+    {
+        ref<uint16>(0x12) = charutils::GetExpNEXTLevel(PChar->jobs.job[PChar->GetMJob()]);
+    }
 
     std::memcpy(buffer_.data() + 0x14, &PChar->stats, 14); // TODO: it won't work with merits
 

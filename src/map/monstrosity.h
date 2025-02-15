@@ -81,6 +81,8 @@ namespace monstrosity
     void HandleEquipChangePacket(CCharEntity* PChar, CBasicPacket& data);
 
     void SetLevel(CCharEntity* PChar, uint8 id, uint8 level);
+    void SetCurrentExp(CCharEntity* PChar, uint32 exp);
+    void HandleLevelUp(CCharEntity* PChar);
 
     void HandleDeathMenu(CCharEntity* PChar, uint8 type);
 
@@ -88,6 +90,8 @@ namespace monstrosity
     bool IsVariantUnlocked(CCharEntity* PChar, uint8 variant);
 
     void SetBelligerencyFlag(CCharEntity* PChar, bool flag);
+
+    uint32 GetExpNEXTLevel(uint8 level);
 
     // Debug
     void MaxAllLevels(CCharEntity* PChar);
