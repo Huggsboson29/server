@@ -19,9 +19,9 @@
 ===========================================================================
 */
 
-// ===
+//
 // See scripts/globals/monstrosity.lua for a general overview of how Monstrosity works and is designed.
-// ===
+//
 
 #include "monstrosity.h"
 
@@ -38,7 +38,12 @@
 #include "packets/char_appearance.h"
 #include "packets/char_job_extra.h"
 #include "packets/char_jobs.h"
+#include "packets/char_recast.h"
+#include "packets/char_skills.h"
 #include "packets/char_stats.h"
+#include "packets/char_status.h"
+#include "packets/char_sync.h"
+#include "packets/menu_merit.h"
 #include "packets/monipulator1.h"
 #include "packets/monipulator2.h"
 
@@ -69,11 +74,11 @@ struct MonstrosityInstinctRow
 
 struct MonstrositySkillRow
 {
-    uint16 monstrositySpeciesCode;
-    uint16 monstrositySkillId;
-    uint16 monsterSkillId;
-    uint8  levelUnlocked;
-    uint16 tpCost;
+    uint16 monstrositySpeciesCode{};
+    uint16 monstrositySkillId{};
+    uint16 monsterSkillId{};
+    uint8  levelUnlocked{};
+    uint16 tpCost{};
 };
 
 namespace
@@ -113,51 +118,42 @@ void monstrosity::LoadStaticData()
 
     {
         const auto rset = db::preparedStmt("SELECT monstrosity_id, monstrosity_species_code, name, mjob, sjob, size, look FROM monstrosity_species");
-        if (rset && rset->rowsCount())
+        FOR_DB_MULTIPLE_RESULTS(rset)
         {
-            while (rset->next())
-            {
-                const auto monstrositySpeciesCode              = rset->get<uint16>("monstrosity_species_code");
-                gMonstrositySpeciesMap[monstrositySpeciesCode] = MonstrositySpeciesRow{
-                    .monstrosityId          = rset->get<uint8>("monstrosity_id"),
-                    .monstrositySpeciesCode = monstrositySpeciesCode,
-                    .name                   = rset->get<std::string>("name"),
-                    .mjob                   = static_cast<JOBTYPE>(rset->get<uint8>("mjob")),
-                    .sjob                   = static_cast<JOBTYPE>(rset->get<uint8>("sjob")),
-                    .size                   = rset->get<uint8>("size"),
-                    .look                   = rset->get<uint16>("look"),
-                };
-            }
+            const auto monstrositySpeciesCode              = rset->get<uint16>("monstrosity_species_code");
+            gMonstrositySpeciesMap[monstrositySpeciesCode] = MonstrositySpeciesRow{
+                .monstrosityId          = rset->get<uint8>("monstrosity_id"),
+                .monstrositySpeciesCode = monstrositySpeciesCode,
+                .name                   = rset->get<std::string>("name"),
+                .mjob                   = static_cast<JOBTYPE>(rset->get<uint8>("mjob")),
+                .sjob                   = static_cast<JOBTYPE>(rset->get<uint8>("sjob")),
+                .size                   = rset->get<uint8>("size"),
+                .look                   = rset->get<uint16>("look"),
+            };
         }
     }
 
     {
         const auto rset = db::preparedStmt("SELECT monstrosity_instinct_id, cost, name FROM monstrosity_instincts");
-        if (rset && rset->rowsCount())
+        FOR_DB_MULTIPLE_RESULTS(rset)
         {
-            while (rset->next())
-            {
-                const auto monstrosityInstinctId               = rset->get<uint16>("monstrosity_instinct_id");
-                gMonstrosityInstinctMap[monstrosityInstinctId] = MonstrosityInstinctRow{
-                    .monstrosityInstinctId = monstrosityInstinctId,
-                    .cost                  = rset->get<uint8>("cost"),
-                    .name                  = rset->get<std::string>("name"),
-                };
-            }
+            const auto monstrosityInstinctId               = rset->get<uint16>("monstrosity_instinct_id");
+            gMonstrosityInstinctMap[monstrosityInstinctId] = MonstrosityInstinctRow{
+                .monstrosityInstinctId = monstrosityInstinctId,
+                .cost                  = rset->get<uint8>("cost"),
+                .name                  = rset->get<std::string>("name"),
+            };
         }
     }
 
     for (auto& [_, entry] : gMonstrosityInstinctMap)
     {
         const auto rset = db::preparedStmt("SELECT modId, value FROM monstrosity_instinct_mods WHERE monstrosity_instinct_id = ?", entry.monstrosityInstinctId);
-        if (rset && rset->rowsCount())
+        FOR_DB_MULTIPLE_RESULTS(rset)
         {
-            while (rset->next())
-            {
-                const auto mod = static_cast<Mod>(rset->get<uint16>("modId"));
-                const auto val = rset->get<int16>("value");
-                entry.mods.emplace_back(mod, val);
-            }
+            const auto mod = static_cast<Mod>(rset->get<uint16>("modId"));
+            const auto val = rset->get<int16>("value");
+            entry.mods.emplace_back(mod, val);
         }
     }
 
@@ -212,10 +208,11 @@ void monstrosity::ReadMonstrosityData(CCharEntity* PChar)
                                  "entry_zone_id, "
                                  "entry_mjob, "
                                  "entry_sjob "
-                                 "FROM char_monstrosity WHERE charid = ? LIMIT 1",
+                                 "FROM char_monstrosity WHERE charid = ? "
+                                 "LIMIT 1",
                                  PChar->id);
 
-    if (rset && rset->rowsCount() && rset->next())
+    FOR_DB_SINGLE_RESULT(rset)
     {
         data->MonstrosityId = rset->get<uint8>("current_monstrosity_id");
         data->Species       = rset->get<uint16>("current_monstrosity_species");
@@ -244,10 +241,6 @@ void monstrosity::ReadMonstrosityData(CCharEntity* PChar)
         data->MainJob = gMonstrositySpeciesMap[data->Species].mjob;
         data->SubJob  = gMonstrositySpeciesMap[data->Species].sjob;
         data->Size    = gMonstrositySpeciesMap[data->Species].size;
-
-        // TODO:
-        auto level  = data->levels[data->MonstrosityId];
-        std::ignore = level;
     }
 
     PChar->m_PMonstrosity = std::move(data);
@@ -408,16 +401,21 @@ void monstrosity::SendFullMonstrosityUpdate(CCharEntity* PChar)
 
     luautils::OnMonstrosityUpdate(PChar);
 
-    PChar->pushPacket<CMonipulatorPacket1>(PChar);
-    PChar->pushPacket<CMonipulatorPacket2>(PChar);
     PChar->pushPacket<CCharJobsPacket>(PChar);
     PChar->pushPacket<CCharJobExtraPacket>(PChar, true);
     PChar->pushPacket<CCharJobExtraPacket>(PChar, false);
     PChar->pushPacket<CCharAppearancePacket>(PChar);
     PChar->pushPacket<CCharStatsPacket>(PChar);
+    PChar->pushPacket<CCharSkillsPacket>(PChar);
+    PChar->pushPacket<CCharRecastPacket>(PChar);
     PChar->pushPacket<CCharAbilitiesPacket>(PChar);
+    PChar->pushPacket<CCharStatusPacket>(PChar);
+    PChar->pushPacket<CMenuMeritPacket>(PChar);
+    PChar->pushPacket<CMonipulatorPacket1>(PChar);
+    PChar->pushPacket<CMonipulatorPacket2>(PChar);
+    PChar->pushPacket<CCharSyncPacket>(PChar);
 
-    PChar->updatemask |= UPDATE_LOOK;
+    PChar->updatemask |= UPDATE_ALL_CHAR;
 }
 
 void monstrosity::HandleMonsterSkillActionPacket(CCharEntity* PChar, CBasicPacket& data)
@@ -543,6 +541,7 @@ void monstrosity::HandleEquipChangePacket(CCharEntity* PChar, CBasicPacket& data
 
             // Change JOB_MON level
             PChar->SetMLevel(newMonLvl);
+            PChar->SetSLevel(newMonLvl);
 
             // Reset exp remainder
             PChar->jobs.exp[JOB_MON]          = 0;

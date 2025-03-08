@@ -5129,6 +5129,7 @@ namespace charutils
 
                     jobpointutils::RefreshGiftMods(PChar);
                     BuildingCharSkillsTable(PChar);
+                    monstrosity::HandleLevelUp(PChar);
                     CalculateStats(PChar);
                     BuildingCharAbilityTable(PChar);
                     BuildingCharTraitsTable(PChar);
