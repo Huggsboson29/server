@@ -38,6 +38,8 @@
 namespace
 {
 
+constexpr uint8 STUCK_THRESHOLD = 8;
+
 bool arePositionsClose(const position_t& a, const position_t& b)
 {
     return distance(a, b) < 1.0f;
@@ -56,7 +58,8 @@ CPathFind::CPathFind(CBaseEntity* PTarget)
 , m_currentTurn(0)
 , m_distanceMoved(0.0f)
 , m_maxDistance(0.0f)
-, m_carefulPathing(false)
+, m_stuckCount(0)
+, m_cachedPolyRef(0)
 {
     m_originalPoint.x        = 0.0f;
     m_originalPoint.y        = 0.0f;
@@ -189,6 +192,7 @@ bool CPathFind::WarpTo(const position_t& point, float maxDistance)
     m_POwner->loc.p.y      = newPoint.y;
     m_POwner->loc.p.z      = newPoint.z;
     m_POwner->loc.p.moving = 0;
+    m_cachedPolyRef        = 0;
 
     LookAt(point);
     m_POwner->updatemask |= UPDATE_POS;
@@ -284,11 +288,6 @@ void CPathFind::FollowPath(timer::time_point tick)
 
     pathpoint_t targetPoint = m_points[m_currentPoint];
 
-    if (m_carefulPathing)
-    {
-        m_POwner->loc.zone->navMesh()->snapToValidPosition(m_POwner->loc.p);
-    }
-
     if (m_maxDistance && m_distanceMoved >= m_maxDistance)
     {
         // if I have a max distance, check to stop me
@@ -359,46 +358,54 @@ void CPathFind::StepTo(const position_t& pos, bool run)
     // face point mob is moving towards
     LookAt(pos);
 
+    //
+    // Compute the desired new position; we'll constrain it to the navmesh below.
+    //
+
+    position_t desiredPos = m_POwner->loc.p;
+
     if (distanceTo <= m_distanceFromPoint + stepDistance)
     {
         m_distanceMoved += distanceTo - m_distanceFromPoint;
 
         if (m_distanceFromPoint == 0)
         {
-            m_POwner->loc.p.x = pos.x;
-            m_POwner->loc.p.y = pos.y;
-            m_POwner->loc.p.z = pos.z;
+            desiredPos.x = pos.x;
+            desiredPos.y = pos.y;
+            desiredPos.z = pos.z;
         }
         else
         {
             float radians = (1 - (float)m_POwner->loc.p.rotation / 256) * 2 * (float)M_PI;
 
-            m_POwner->loc.p.x += cosf(radians) * (distanceTo - m_distanceFromPoint);
-            m_POwner->loc.p.z += sinf(radians) * (distanceTo - m_distanceFromPoint);
+            desiredPos.x += cosf(radians) * (distanceTo - m_distanceFromPoint);
+            desiredPos.z += sinf(radians) * (distanceTo - m_distanceFromPoint);
             if (abs(diff_y) > .5f)
             {
                 // Don't step too far vertically by simply utilizing the slope
                 float new_y = m_POwner->loc.p.y + stepDistance * (pos.y - m_POwner->loc.p.y) / distance(m_POwner->loc.p, pos, true);
                 float min_y = (pos.y + m_POwner->loc.p.y - abs(pos.y - m_POwner->loc.p.y)) / 2;
                 float max_y = (pos.y + m_POwner->loc.p.y + abs(pos.y - m_POwner->loc.p.y)) / 2;
+
                 // clamp new_y between start and end vertical position
-                new_y             = new_y < min_y ? min_y : new_y;
-                m_POwner->loc.p.y = new_y > max_y ? max_y : new_y;
+                new_y        = new_y < min_y ? min_y : new_y;
+                desiredPos.y = new_y > max_y ? max_y : new_y;
             }
             else
             {
-                m_POwner->loc.p.y = pos.y;
+                desiredPos.y = pos.y;
             }
         }
     }
     else
     {
         m_distanceMoved += stepDistance;
+
         // take a step towards target point
         float radians = (1 - (float)m_POwner->loc.p.rotation / 256) * 2 * (float)M_PI;
 
-        m_POwner->loc.p.x += cosf(radians) * stepDistance;
-        m_POwner->loc.p.z += sinf(radians) * stepDistance;
+        desiredPos.x += cosf(radians) * stepDistance;
+        desiredPos.z += sinf(radians) * stepDistance;
         if (abs(diff_y) > .5f)
         {
             // Don't step too far vertically by simply utilizing the slope
@@ -406,13 +413,85 @@ void CPathFind::StepTo(const position_t& pos, bool run)
             float min_y = (pos.y + m_POwner->loc.p.y - abs(pos.y - m_POwner->loc.p.y)) / 2;
             float max_y = (pos.y + m_POwner->loc.p.y + abs(pos.y - m_POwner->loc.p.y)) / 2;
             // clamp new_y between start and end vertical position
-            new_y             = new_y < min_y ? min_y : new_y;
-            m_POwner->loc.p.y = new_y > max_y ? max_y : new_y;
+            new_y        = new_y < min_y ? min_y : new_y;
+            desiredPos.y = new_y > max_y ? max_y : new_y;
         }
         else
         {
-            m_POwner->loc.p.y = pos.y;
+            desiredPos.y = pos.y;
         }
+    }
+
+    //
+    // Constrain movement to the navmesh surface, with wall sliding and stuck detection.
+    //
+
+    const auto& navMesh = m_POwner->loc.zone->navMesh();
+
+    position_t constrainedPos{};
+    dtPolyRef  polyRef = static_cast<dtPolyRef>(m_cachedPolyRef);
+
+    if (navMesh->moveAlongSurface(polyRef, m_POwner->loc.p, desiredPos, constrainedPos))
+    {
+        float movedDistSq  = distanceSquared(m_POwner->loc.p, constrainedPos, true);
+        float wallThreshSq = square(stepDistance * 0.9f);
+        bool  hitWall      = movedDistSq < wallThreshSq && stepDistance > 0.0f;
+
+        if (hitWall)
+        {
+            float movedDist = std::sqrt(movedDistSq);
+            float remaining = stepDistance - movedDist;
+            float dirX      = pos.x - constrainedPos.x;
+            float dirZ      = pos.z - constrainedPos.z;
+            float dirLen    = std::sqrt(dirX * dirX + dirZ * dirZ);
+
+            if (dirLen > 0.01f)
+            {
+                position_t slideTarget = constrainedPos;
+                slideTarget.x += (dirX / dirLen) * remaining;
+                slideTarget.z += (dirZ / dirLen) * remaining;
+
+                position_t slideResult{};
+                if (navMesh->moveAlongSurface(polyRef, constrainedPos, slideTarget, slideResult))
+                {
+                    movedDistSq    = distanceSquared(m_POwner->loc.p, slideResult, true);
+                    constrainedPos = slideResult;
+                }
+            }
+        }
+
+        float stuckThreshSq = square(stepDistance * 0.1f);
+        if (movedDistSq < stuckThreshSq)
+        {
+            m_stuckCount++;
+        }
+        else
+        {
+            m_stuckCount = 0;
+        }
+
+        if (m_stuckCount >= STUCK_THRESHOLD)
+        {
+            m_POwner->loc.p.x = desiredPos.x;
+            m_POwner->loc.p.y = desiredPos.y;
+            m_POwner->loc.p.z = desiredPos.z;
+            m_stuckCount      = 0;
+            m_cachedPolyRef   = 0;
+        }
+        else
+        {
+            m_POwner->loc.p.x = constrainedPos.x;
+            m_POwner->loc.p.y = constrainedPos.y;
+            m_POwner->loc.p.z = constrainedPos.z;
+            m_cachedPolyRef   = polyRef;
+        }
+    }
+    else
+    {
+        m_POwner->loc.p.x = desiredPos.x;
+        m_POwner->loc.p.y = desiredPos.y;
+        m_POwner->loc.p.z = desiredPos.z;
+        m_cachedPolyRef   = 0;
     }
 
     m_POwner->loc.p.moving += speedChange ? 0x28 : 0x35;
@@ -570,11 +649,6 @@ const position_t& CPathFind::GetDestination() const
     return m_points.back().position;
 }
 
-void CPathFind::SetCarefulPathing(bool careful)
-{
-    m_carefulPathing = careful;
-}
-
 void CPathFind::Clear()
 {
     m_distanceFromPoint = 0;
@@ -591,7 +665,9 @@ void CPathFind::Clear()
 
     m_onPoint = true;
 
-    m_currentTurn = 0;
+    m_currentTurn   = 0;
+    m_stuckCount    = 0;
+    m_cachedPolyRef = 0;
     m_turnPoints.clear();
 }
 

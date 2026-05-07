@@ -550,11 +550,6 @@ end
 function CBaseEntity:LimitDistance()
 end
 
----@param careful boolean
----@return nil
-function CBaseEntity:setCarefulPathing(careful)
-end
-
 ---@nodiscard
 ---@param target CBaseEntity
 ---@return boolean

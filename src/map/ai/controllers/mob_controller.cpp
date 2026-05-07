@@ -891,7 +891,7 @@ void CMobController::Move()
                             auto projectedPosition = nearPosition(PTarget->loc.p, 0, rotationToRadian(worldAngle(PMob->loc.p, PTarget->loc.p)));
 
                             // try to find path towards target
-                            PMob->PAI->PathFind->PathInRange(projectedPosition, closeDistance, PATHFLAG_WALLHACK | PATHFLAG_RUN);
+                            PMob->PAI->PathFind->PathInRange(projectedPosition, closeDistance, PATHFLAG_RUN);
                         }
                     }
                     else if (!isWithinDistance(PMob->PAI->PathFind->GetDestination(), PTarget->loc.p, 0.1)) // This checks against the previous frames distance, and can false positive for where we want to be _now_
@@ -899,7 +899,7 @@ void CMobController::Move()
                         auto projectedPosition = nearPosition(PTarget->loc.p, 0, rotationToRadian(worldAngle(PMob->loc.p, PTarget->loc.p)));
 
                         // try to find path towards target
-                        PMob->PAI->PathFind->PathInRange(projectedPosition, closeDistance, PATHFLAG_WALLHACK | PATHFLAG_RUN);
+                        PMob->PAI->PathFind->PathInRange(projectedPosition, closeDistance, PATHFLAG_RUN);
                     }
 
                     PMob->PAI->PathFind->FollowPath(m_Tick);
@@ -928,7 +928,7 @@ void CMobController::Move()
 
                                     if (PMob->PAI->PathFind->ValidPosition(new_pos))
                                     {
-                                        PMob->PAI->PathFind->PathTo(new_pos, PATHFLAG_WALLHACK | PATHFLAG_RUN);
+                                        PMob->PAI->PathFind->PathTo(new_pos, PATHFLAG_RUN);
                                         needToMove = true;
                                     }
                                     break;
@@ -1081,12 +1081,12 @@ auto CMobController::DoRoamTick(timer::time_point tick) -> Task<void>
             PFollowTarget->PAI->PathFind->IsFollowingPath())
         {
             float followStopRange = 2.0f;
-
             if (PMob->getMobMod(MOBMOD_FOLLOW_STOP_RANGE) > 0)
             {
                 followStopRange = PMob->getMobMod(MOBMOD_FOLLOW_STOP_RANGE);
             }
-            PMob->PAI->PathFind->PathAround(PFollowTarget->loc.p, followStopRange, PATHFLAG_RUN | PATHFLAG_WALLHACK);
+
+            PMob->PAI->PathFind->PathAround(PFollowTarget->loc.p, followStopRange, PATHFLAG_RUN);
         }
 
         if (!PMob->PAI->PathFind->IsFollowingPath())
@@ -1148,7 +1148,7 @@ auto CMobController::DoRoamTick(timer::time_point tick) -> Task<void>
                     // walk back to spawn if too far away
                     if (!PMob->PAI->PathFind->IsFollowingPath() && !PMob->PAI->PathFind->PathTo(PMob->m_SpawnPoint))
                     {
-                        PMob->PAI->PathFind->PathInRange(PMob->m_SpawnPoint, PMob->m_maxRoamDistance, PATHFLAG_RUN | PATHFLAG_WALLHACK);
+                        PMob->PAI->PathFind->PathInRange(PMob->m_SpawnPoint, PMob->m_maxRoamDistance, PATHFLAG_RUN);
                     }
 
                     // limit total path to just 10 or

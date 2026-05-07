@@ -198,7 +198,7 @@ auto CTrustController::DoCombatTick(timer::time_point tick) -> Task<void>
                         if (currentDistanceToTarget > RoamDistance)
                         {
                             if (currentDistanceToTarget < RoamDistance * 3.0f &&
-                                PTrust->PAI->PathFind->PathAround(PTarget->loc.p, RoamDistance, PATHFLAG_RUN | PATHFLAG_WALLHACK))
+                                PTrust->PAI->PathFind->PathAround(PTarget->loc.p, RoamDistance, PATHFLAG_RUN))
                             {
                                 PTrust->PAI->PathFind->FollowPath(m_Tick);
                             }
@@ -292,7 +292,7 @@ auto CTrustController::DoRoamTick(timer::time_point tick) -> Task<void>
             };
             // clang-format on
 
-            if (POwner->PAI->PathFind->ValidPosition(new_pos) && POwner->PAI->PathFind->PathAround(new_pos, RoamDistance, PATHFLAG_RUN | PATHFLAG_WALLHACK))
+            if (POwner->PAI->PathFind->ValidPosition(new_pos) && POwner->PAI->PathFind->PathAround(new_pos, RoamDistance, PATHFLAG_RUN))
             {
                 POwner->PAI->PathFind->FollowPath(m_Tick);
             }
@@ -306,7 +306,7 @@ auto CTrustController::DoRoamTick(timer::time_point tick) -> Task<void>
     }
     else if (currentDistance > RoamDistance)
     {
-        if (currentDistance < RoamDistance * 3.0f && POwner->PAI->PathFind->PathAround(PFollowTarget->loc.p, RoamDistance, PATHFLAG_RUN | PATHFLAG_WALLHACK))
+        if (currentDistance < RoamDistance * 3.0f && POwner->PAI->PathFind->PathAround(PFollowTarget->loc.p, RoamDistance, PATHFLAG_RUN))
         {
             POwner->PAI->PathFind->FollowPath(m_Tick);
         }
@@ -360,7 +360,7 @@ void CTrustController::Declump(CCharEntity* PMaster, CBattleEntity* PTarget)
 
             if (POwner->PAI->PathFind->ValidPosition(newPos))
             {
-                POwner->PAI->PathFind->PathTo(newPos, PATHFLAG_RUN | PATHFLAG_WALLHACK);
+                POwner->PAI->PathFind->PathTo(newPos, PATHFLAG_RUN);
             }
             break;
         }
@@ -421,7 +421,7 @@ void CTrustController::PathOutToDistance(CBattleEntity* PTarget, float amount)
     // Get somewhat close to the target destination
     if (distance(POwner->loc.p, target_position) > 2.0f && m_failedRepositionAttempts < 3)
     {
-        POwner->PAI->PathFind->PathTo(target_position, PATHFLAG_RUN | PATHFLAG_WALLHACK);
+        POwner->PAI->PathFind->PathTo(target_position, PATHFLAG_RUN);
     }
     else
     {

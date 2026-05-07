@@ -160,14 +160,16 @@ auto CPetController::DoRoamTick(timer::time_point tick) -> Task<void>
 
     // Recalculate path only if owner moves more than X yalms
     if (!PPet->PAI->PathFind->IsFollowingPath() ||
-        distance(PPet->PAI->PathFind->GetDestination(), PPet->PMaster->loc.p) > 2.0f)
+        distance(PPet->PAI->PathFind->GetDestination(), PPet->PMaster->loc.p) > 2.0f) // recalculate path only if owner moves more than X yalms
     {
-        if (!PPet->PAI->PathFind->PathAround(PPet->PMaster->loc.p, 2.0f, PATHFLAG_RUN | PATHFLAG_WALLHACK) &&
-            !PPet->PAI->PathFind->PathInRange(PPet->PMaster->loc.p, 2.0f, PATHFLAG_RUN | PATHFLAG_WALLHACK))
+        if (!PPet->PAI->PathFind->PathAround(PPet->PMaster->loc.p, 2.0f, PATHFLAG_RUN))
         {
-            // If we got here, the pet isn't able to path to master
-            // But it cant, so maybe we teleported or dropped down a hole
-            PPet->PAI->PathFind->WarpTo(PPet->PMaster->loc.p, PetRoamDistance);
+            if (!PPet->PAI->PathFind->PathInRange(PPet->PMaster->loc.p, 2.0f, PATHFLAG_RUN))
+            {
+                // If we got here, the pet isn't able to path to master
+                // But it cant, so maybe we teleported or dropped down a hole
+                PPet->PAI->PathFind->WarpTo(PPet->PMaster->loc.p, PetRoamDistance);
+            }
         }
     }
 

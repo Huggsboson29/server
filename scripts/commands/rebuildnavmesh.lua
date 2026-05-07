@@ -8,7 +8,7 @@ local commandObj = {}
 commandObj.cmdprops =
 {
     permission = 5,
-    parameters = ''
+    parameters = 'i'
 }
 
 local config =
@@ -17,19 +17,19 @@ local config =
     --
     -- Docs:
     -- The xz-plane cell size to use for fields. [Limit: > 0] [Units: wu]
-    cellSize = 0.5,
+    cellSize = 0.25,
 
     -- Vertical voxel resolution. Smaller = more accurate height detection, around drops and slope edges.
     --
     -- Docs:
     -- The y-axis cell size to use for fields. [Limit: > 0] [Units: wu]
-    cellHeight = 0.4,
+    cellHeight = 0.25,
 
     -- Slopes steeper than this angle (in degrees) are marked as unwalkable.
     --
     -- Docs:
     -- The maximum slope that is considered walkable. [Limits: 0 <= value < 90] [Units: Degrees]
-    walkableSlopeAngle = 46.0,
+    walkableSlopeAngle = 45.0,
 
     -- Minimum clearance above the floor for an area to be walkable (in wu).
     -- Areas with ceilings lower than this are excluded (doorframes, overhangs).
@@ -46,7 +46,7 @@ local config =
     -- Docs:
     -- The distance to erode/shrink the walkable area of the heightfield away from
     -- obstructions. [Limit: >=0] [Units: vx]
-    agentRadius = 0.5,
+    agentRadius = 0.2,
 
     -- Maximum step height the agent can climb (in wu). Ledges taller than
     -- this become unwalkable barriers.
@@ -70,14 +70,14 @@ local config =
     -- Docs:
     -- The maximum distance a simplified contour's border edges should deviate
     -- the original raw contour. [Limit: >=0] [Units: vx]
-    maxSimplificationError = 1.3,
+    maxSimplificationError = 1.0,
 
     -- Isolated walkable patches smaller than this (in voxels squared) are
     -- removed. Eliminates tiny floating islands of navmesh.
     --
     -- Docs:
     -- The minimum number of cells allowed to form isolated island areas. [Limit: >=0] [Units: vx]
-    minRegionArea = 8,
+    minRegionArea = 4,
 
     -- Small regions below this size (in voxels squared) are merged into
     -- adjacent larger regions instead of being removed.
@@ -130,7 +130,28 @@ local config =
     filterWalkableLowHeightSpans = true,
 }
 
-commandObj.onTrigger = function(player)
+local highLodConfig =
+{
+    cellSize                     = 0.10,
+    cellHeight                   = 0.10,
+    walkableSlopeAngle           = 55.0,
+    agentHeight                  = 1.8,
+    agentRadius                  = 0.15,
+    agentMaxClimb                = 0.6,
+    maxEdgeLen                   = 0.0,
+    maxSimplificationError       = 0.8,
+    minRegionArea                = 4,
+    mergeRegionArea              = 20,
+    maxVertsPerPoly              = 6,
+    detailSampleDist             = 6.0,
+    detailSampleMaxError         = 1.0,
+    tileSize                     = 64,
+    filterLowHangingObstacles    = true,
+    filterLedgeSpans             = true,
+    filterWalkableLowHeightSpans = true,
+}
+
+commandObj.onTrigger = function(player, lod)
     local zone = player:getZone()
     if not zone then
         return
@@ -140,7 +161,11 @@ commandObj.onTrigger = function(player)
     print(str)
     player:printToPlayer(str)
 
-    zone:rebuildNavmesh(config)
+    if lod == 2 then -- high detail
+        zone:rebuildNavmesh(highLodConfig)
+    else
+        zone:rebuildNavmesh(config)
+    end
 end
 
 return commandObj

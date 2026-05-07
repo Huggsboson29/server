@@ -33,11 +33,12 @@ public:
 
     virtual auto findPath(const position_t& start, const position_t& end) -> std::vector<pathpoint_t>                              = 0;
     virtual auto findRandomPosition(const position_t& start, float maxRadius) -> std::pair<int16, position_t>                      = 0;
-    virtual auto raycast(const position_t& start, const position_t& end) -> bool                                                   = 0;
     virtual auto validPosition(const position_t& position) -> bool                                                                 = 0;
     virtual auto findClosestValidPoint(const position_t& position, float* validPoint) -> bool                                      = 0;
     virtual auto findFurthestValidPoint(const position_t& startPosition, const position_t& endPosition, float* validPoint) -> bool = 0;
     virtual void snapToValidPosition(position_t& position)                                                                         = 0;
+    virtual bool moveAlongSurface(const position_t& start, const position_t& end, position_t& result)                              = 0;
+    virtual bool moveAlongSurface(unsigned int& cachedRef, const position_t& start, const position_t& end, position_t& result)     = 0;
 };
 
 class NullNavMesh final : public INavMesh
@@ -51,11 +52,6 @@ public:
     auto findRandomPosition(const position_t& start, float) -> std::pair<int16, position_t> override
     {
         return { 0, start };
-    }
-
-    auto raycast(const position_t&, const position_t&) -> bool override
-    {
-        return true;
     }
 
     auto validPosition(const position_t&) -> bool override
@@ -76,5 +72,15 @@ public:
     void snapToValidPosition(position_t&) override
     {
         // NOOP
+    }
+
+    bool moveAlongSurface(const position_t& start, const position_t& end, position_t& result) override
+    {
+        return false;
+    }
+
+    bool moveAlongSurface(unsigned int& cachedRef, const position_t& start, const position_t& end, position_t& result) override
+    {
+        return false;
     }
 };

@@ -23,6 +23,24 @@
 
 struct NavMeshConfig
 {
+    // Experimental
+    float cellSize{ 0.25f };              // Previous xiNavmeshes value: 0.4
+    float cellHeight{ 0.25f };            // Previous xiNavmeshes value: 0.2
+    float walkableSlopeAngle{ 45.0f };    // Previous xiNavmeshes value: 46.0
+    float agentHeight{ 2.0f };            // Previous xiNavmeshes value: 1.8
+    float agentRadius{ 0.2f };            // Previous xiNavmeshes value: 0.3
+    float agentMaxClimb{ 0.6f };          // Previous xiNavmeshes value: 0.6
+    float maxEdgeLen{ 0.0f };             // Previous xiNavmeshes value: 12.0
+    float maxSimplificationError{ 1.0f }; // Previous xiNavmeshes value: 1.3
+    int   minRegionArea{ 4 };             // Previous xiNavmeshes value: 8
+    int   mergeRegionArea{ 20 };          // Previous xiNavmeshes value: 20
+    int   maxVertsPerPoly{ 6 };           // Previous xiNavmeshes value: 6
+    float detailSampleDist{ 6.0f };       // Previous xiNavmeshes value: 6.0
+    float detailSampleMaxError{ 1.0f };   // Previous xiNavmeshes value: 1.0
+    int   tileSize{ 64 };                 // Previous xiNavmeshes value: 256
+
+    // Original:
+    /*
     float cellSize{ 0.5f };               // Previous xiNavmeshes value: 0.4
     float cellHeight{ 0.4f };             // Previous xiNavmeshes value: 0.2
     float walkableSlopeAngle{ 46.0f };    // Previous xiNavmeshes value: 46.0
@@ -37,6 +55,7 @@ struct NavMeshConfig
     float detailSampleDist{ 6.0f };       // Previous xiNavmeshes value: 6.0
     float detailSampleMaxError{ 1.0f };   // Previous xiNavmeshes value: 1.0
     int   tileSize{ 64 };                 // Previous xiNavmeshes value: 256
+    */
 
     bool filterLowHangingObstacles{ true };
     bool filterLedgeSpans{ true };

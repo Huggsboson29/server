@@ -1973,7 +1973,7 @@ void CLuaBaseEntity::pathTo(float x, float y, float z, const sol::object& flags)
 
     if (m_PBaseEntity->PAI->PathFind)
     {
-        uint8 pathFlags = (flags != sol::lua_nil) ? flags.as<uint8>() : static_cast<uint8>(PATHFLAG_RUN | PATHFLAG_WALLHACK | PATHFLAG_SCRIPT);
+        uint8 pathFlags = (flags != sol::lua_nil) ? flags.as<uint8>() : static_cast<uint8>(PATHFLAG_RUN | PATHFLAG_SCRIPT);
 
         m_PBaseEntity->PAI->PathFind->PathTo(point, pathFlags);
     }
@@ -2213,21 +2213,6 @@ void CLuaBaseEntity::unfollow()
 
     auto* controller = static_cast<CMobController*>(m_PBaseEntity->PAI->GetController());
     controller->ClearFollowTarget();
-}
-
-/************************************************************************
- *  Function: setCarefulPathing(...)
- *  Purpose : Enables or disables careful pathing for an entity.
- *  Example : mob:setCarefulPathing(true)
- *  Notes   : !!! THIS IS VERY EXPENSIVE !!!. Only use this as a last resort!
- ************************************************************************/
-
-void CLuaBaseEntity::setCarefulPathing(bool careful)
-{
-    if (m_PBaseEntity->PAI->PathFind)
-    {
-        m_PBaseEntity->PAI->PathFind->SetCarefulPathing(careful);
-    }
 }
 
 /************************************************************************
@@ -19745,7 +19730,6 @@ void CLuaBaseEntity::Register()
     SOL_REGISTER("follow", CLuaBaseEntity::follow);
     SOL_REGISTER("hasFollowTarget", CLuaBaseEntity::hasFollowTarget);
     SOL_REGISTER("unfollow", CLuaBaseEntity::unfollow);
-    SOL_REGISTER("setCarefulPathing", CLuaBaseEntity::setCarefulPathing);
     SOL_REGISTER("canSee", CLuaBaseEntity::canSee);
     SOL_REGISTER("inWater", CLuaBaseEntity::inWater);
 
